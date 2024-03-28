@@ -52,11 +52,12 @@ async Task ReceberMensagens(WebSocket webSocket)
 				if (_mensagem.Type == "text")
 				{
 					await Console.Out.WriteLineAsync(_mensagem.Name+": " + _mensagem.Data);
-					await EnviarMensagem(_mensagem.Data, webSocket);
+					await EnviarMensagem(_mensagem.Data, "text", webSocket);
 				}
 				else if (_mensagem.Type == "file")
 				{
-					string diretorioDestino = "C:\\Projetos\\WebSocket\\Cliente\\documents";
+					//string diretorioDestino = "C:\\Projetos\\WebSocket\\Cliente\\documents";
+					string diretorioDestino = "C:\\xampp\\htdocs\\documents";
 
 					string caminhoCompleto = Path.Combine(diretorioDestino, _mensagem.Name);
 
@@ -67,7 +68,10 @@ async Task ReceberMensagens(WebSocket webSocket)
 						File.WriteAllBytes(caminhoCompleto, arquivoBytes);
 
 						await Console.Out.WriteLineAsync("Arquivo salvo com sucesso em: " + caminhoCompleto);
-                    }
+
+						await EnviarMensagem("documents/" + _mensagem.Name, "file", webSocket);
+
+					}
 					catch (Exception ex)
 					{
                         await Console.Out.WriteLineAsync("Erro ao salvar o arquivo:" + ex.Message);
@@ -85,9 +89,18 @@ async Task ReceberMensagens(WebSocket webSocket)
 	}
 }
 
-async Task EnviarMensagem(string mensagem, WebSocket webSocket)
+async Task EnviarMensagem(string mensagem, string tipo, WebSocket webSocket)
 {
-	var bufferMensagem = Encoding.UTF8.GetBytes(mensagem);
+	Mensagem mensagemResponse = new Mensagem()
+	{
+		Type = tipo,
+		Name = "Você",
+		Data = mensagem
+	};
+
+	var jsonResponse = JsonConvert.SerializeObject(mensagemResponse);
+
+	var bufferMensagem = Encoding.UTF8.GetBytes(jsonResponse);
 
 	await webSocket.SendAsync(new ArraySegment<byte>(bufferMensagem), WebSocketMessageType.Text, true, CancellationToken.None);
 }
