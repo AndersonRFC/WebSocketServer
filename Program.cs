@@ -29,22 +29,55 @@ async Task ReceberMensagens(WebSocket webSocket)
 {
 	var buffer = new byte[10 * 1024 * 1024];
 
+	string mensagem = string.Empty;
+
 	while (webSocket.State == WebSocketState.Open)
 	{
 		Array.Clear(buffer, 0, buffer.Length);
 
-		var mensagemRecebida = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+		var resultadoRecebimento = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
-		if (mensagemRecebida.MessageType == WebSocketMessageType.Text)
+		if (resultadoRecebimento.MessageType == WebSocketMessageType.Text)
 		{
-			var mensagem = Encoding.UTF8.GetString(buffer, 0, mensagemRecebida.Count);
+			var mensagemRecebida = Encoding.UTF8.GetString(buffer, 0, resultadoRecebimento.Count);
 
-			await Console.Out.WriteLineAsync("Mensagem recebida: " + mensagem);
+			mensagem += mensagemRecebida;
 
-			await EnviarMensagem(mensagem, webSocket);
+
+			if (resultadoRecebimento.EndOfMessage)
+			{
+
+				Mensagem _mensagem = JsonConvert.DeserializeObject<Mensagem>(mensagem)!;
+
+				if (_mensagem.Type == "text")
+				{
+					await Console.Out.WriteLineAsync(_mensagem.Name+": " + _mensagem.Data);
+					await EnviarMensagem(_mensagem.Data, webSocket);
+				}
+				else if (_mensagem.Type == "file")
+				{
+					string diretorioDestino = "C:\\Projetos\\WebSocket\\Cliente\\documents";
+
+					string caminhoCompleto = Path.Combine(diretorioDestino, _mensagem.Name);
+
+					try
+					{
+						byte[] arquivoBytes = Convert.FromBase64String(_mensagem.Data);
+
+						File.WriteAllBytes(caminhoCompleto, arquivoBytes);
+
+						await Console.Out.WriteLineAsync("Arquivo salvo com sucesso em: " + caminhoCompleto);
+                    }
+					catch (Exception ex)
+					{
+                        await Console.Out.WriteLineAsync("Erro ao salvar o arquivo:" + ex.Message);
+                    }
+				}
+				mensagem = string.Empty;
+			}
 
 		}
-		else if (mensagemRecebida.MessageType == WebSocketMessageType.Close)
+		else if (resultadoRecebimento.MessageType == WebSocketMessageType.Close)
 		{
 			await Console.Out.WriteLineAsync("Conexão encerrada.");
 			break;
@@ -61,4 +94,9 @@ async Task EnviarMensagem(string mensagem, WebSocket webSocket)
 
 app.Run();
 
-//var jsonMensagem = JsonConvert.SerializeObject(mensagem);
+public class Mensagem
+{
+	public string Type { get; set; }
+	public string Name { get; set; }
+	public string Data { get; set; }
+}
