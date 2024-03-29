@@ -31,11 +31,41 @@ async Task ReceberMensagens(WebSocket webSocket)
 
 	string mensagem = string.Empty;
 
+	int count = 0;
+
+	int sumResultado = 0;
+
+	int previsto = 0;
+
+	bool trintaFlag = true;
+
+	bool sessentaflag = true;
+
+	bool canprever = false;
+
 	while (webSocket.State == WebSocketState.Open)
 	{
 		Array.Clear(buffer, 0, buffer.Length);
 
 		var resultadoRecebimento = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+		count++;
+		sumResultado += resultadoRecebimento.Count;
+		Console.WriteLine("Recebi " + count + " - " + resultadoRecebimento.Count + "    :::    " + sumResultado);
+
+		if (sumResultado > previsto / 3 && canprever && trintaFlag)
+		{
+			Console.WriteLine("trinta flag -----\n\n");
+
+			trintaFlag = false;
+			await EnviarMensagem("30", "info", webSocket);
+		}
+		else if (sumResultado > (previsto / 1.5) && canprever && sessentaflag)
+		{
+			Console.WriteLine("sessenta flag -----\n\n");
+			sessentaflag = false;
+			await EnviarMensagem("60", "info", webSocket);
+		}
+
 
 		if (resultadoRecebimento.MessageType == WebSocketMessageType.Text)
 		{
@@ -43,6 +73,7 @@ async Task ReceberMensagens(WebSocket webSocket)
 
 			mensagem += mensagemRecebida;
 
+			Console.WriteLine(mensagem.Length);
 
 			if (resultadoRecebimento.EndOfMessage)
 			{
@@ -51,8 +82,10 @@ async Task ReceberMensagens(WebSocket webSocket)
 
 				if (_mensagem.Type == "text")
 				{
-					await Console.Out.WriteLineAsync(_mensagem.Name+": " + _mensagem.Data);
+					await Console.Out.WriteLineAsync(_mensagem.Name + ": " + _mensagem.Data);
 					await EnviarMensagem(_mensagem.Data, "text", webSocket);
+					canprever = false;
+
 				}
 				else if (_mensagem.Type == "file")
 				{
@@ -74,10 +107,30 @@ async Task ReceberMensagens(WebSocket webSocket)
 					}
 					catch (Exception ex)
 					{
-                        await Console.Out.WriteLineAsync("Erro ao salvar o arquivo:" + ex.Message);
+						await Console.Out.WriteLineAsync("Erro ao salvar o arquivo:" + ex.Message);
+					}
+					canprever = false;
+
+				}
+				else if (_mensagem.Type == "info")
+				{
+
+					try
+					{
+						previsto = (int)((int.Parse(_mensagem.Data)) * 1.34);
+
+						canprever = true;
+					}
+					catch
+					{
+                        await Console.Out.WriteLineAsync("\n\nMensagem Data: " + mensagem);
                     }
 				}
+				count = 0;
+				sumResultado = 0;
 				mensagem = string.Empty;
+				trintaFlag = true;
+				sessentaflag = true;
 			}
 
 		}
@@ -95,7 +148,8 @@ async Task EnviarMensagem(string mensagem, string tipo, WebSocket webSocket)
 	{
 		Type = tipo,
 		Name = "Você",
-		Data = mensagem
+		Data = mensagem,
+		Size = mensagem.Length
 	};
 
 	var jsonResponse = JsonConvert.SerializeObject(mensagemResponse);
@@ -112,4 +166,5 @@ public class Mensagem
 	public string Type { get; set; }
 	public string Name { get; set; }
 	public string Data { get; set; }
+	public int Size { get; set; }
 }
