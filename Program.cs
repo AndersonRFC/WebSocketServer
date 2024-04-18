@@ -141,6 +141,7 @@ async Task ReceberMensagens(WebSocket webSocket, User user)
 				{
 					//string diretorioDestino = "C:\\Projetos\\WebSocket\\Cliente\\documents";
 					string diretorioDestino = "C:\\xampp\\htdocs\\documents";
+					//string diretorioDestino = "C:\\Projetos\\Outbox\\Design\\10. Design\\documents";
 
 					string caminhoCompleto = Path.Combine(diretorioDestino, _mensagem.Name);
 
